@@ -1,7 +1,14 @@
 package com.masterclass.travelorder;
 
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.*;
+import jakarta.transaction.Transactional;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
@@ -21,14 +28,18 @@ public class TravelOrderResources {
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @RunOnVirtualThread
     public List<TravelOrderDTO> orders() {
-        return TravelOrder.<TravelOrder>listAll().stream()
+
+        final var response = TravelOrder.<TravelOrder>listAll().stream()
                 .map(
                         order -> TravelOrderDTO.of(
                                 order,
                                 flightService.findByTravelOrderId(order.id),
                                 hotelService.findByTravelOrderId(order.id)
-                        )).collect(Collectors.toList());
+                        )
+                ).collect(Collectors.toList());
+        return response;
     }
 
     @GET
@@ -37,6 +48,7 @@ public class TravelOrderResources {
         return TravelOrder.findById(id);
     }
 
+    @Transactional
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
@@ -48,7 +60,7 @@ public class TravelOrderResources {
         Flight flight = new Flight();
         flight.setFromAirport(orderDto.getFromAirport());
         flight.setToAirport(orderDto.getToAirport());
-        flight.setId(order.id);
+        flight.setTravelOrderId(order.id);
         flightService.newFlight(flight);
 
         Hotel hotel = new Hotel();
